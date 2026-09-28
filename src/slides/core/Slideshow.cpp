@@ -12,6 +12,7 @@
 #include "ImGuizmo.h"
 #include <spdlog/spdlog.h>
 #include <cstdio>
+#include <cstdlib>
 
 // X11 comes in through GLFW and defines None, which eats TransparencyMode::None
 #ifdef None
@@ -322,7 +323,7 @@ void slope::Slideshow::onWindowClose(GLFWwindow* w) {
 void slope::Slideshow::init(std::string project_name, int argc, char** argv) {
     help_wanted = slope::parseCLI(argc, argv);
     if (help_wanted)
-        return;
+        std::exit(help_wanted);
 
     if (slope::Options::HideSlideNumbers)
         display_slide_number = false;
