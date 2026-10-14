@@ -337,16 +337,28 @@ void Arrow2D::drawArrow(parameter t, float alpha) const {
 
     ImU32 col = withAlpha(style.color, alpha);
     float th = pixelThickness(style.thickness);
-    auto [tip, dir] = strokePolylinePrefix(px, t, col, th, false);
-    if (head <= 0)
+    if (head <= 0) {
+        strokePolylinePrefix(px, t, col, th, false);
         return;
+    }
 
+    auto [tip, dir] = strokePolylinePrefix(px, t, col, 0, false);
+    scalar total = 0;
+    for (int i = 1; i < N; i++)
+        total += std::hypot(px[i].x - px[i - 1].x, px[i].y - px[i - 1].y);
+    float hs = std::min<float>(std::max<float>(head * W.y, 2 * th), total);
+
+    parameter body = total > 0 ? t - 0.8 * hs / total : 0;
+    if (body > 0) {
+        ImVec2 end = strokePolylinePrefix(px, body, col, th, false).first;
+        if (std::hypot(tip.x - end.x, tip.y - end.y) > 1e-6f)
+            dir = ImVec2(tip.x - end.x, tip.y - end.y);
+    }
     float len = std::hypot(dir.x, dir.y);
     if (len < 1e-6f)
         return;
     ImVec2 u = ImVec2(dir.x / len, dir.y / len);
     ImVec2 n = ImVec2(-u.y, u.x);
-    float hs = head * W.y;
     ImVec2 base = ImVec2(tip.x - hs * u.x, tip.y - hs * u.y);
     ImGui::GetWindowDrawList()->AddTriangleFilled(
         ImVec2(tip.x + 0.35f * hs * u.x, tip.y + 0.35f * hs * u.y),
