@@ -101,7 +101,7 @@ public:
     // Size in pixels.
     vec2 getSize() const override {
         vec2 rslt = ComputeEnglobing(primitivesInside).bbox;
-        auto W = ImGui::GetWindowSize();
+        auto W = Canvas::size();
         return vec2(rslt(0) * W.x, rslt(1) * W.y);
     }
 

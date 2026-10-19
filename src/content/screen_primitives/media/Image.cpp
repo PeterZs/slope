@@ -1,5 +1,6 @@
 #include "content/screen_primitives/media/Image.h"
 #include "content/screen_primitives/gpu/PlaneWarp.h"
+#include "content/screen_primitives/layout/Canvas.h"
 
 size_t slope::Image::count = 0;
 std::vector<slope::Image> slope::Image::images;
@@ -29,13 +30,8 @@ ImVec2 slope::Image::getSize(std::string filename) {
 }
 
 slope::Primitive::Size slope::Image::getScaledSize(const ImageData& data, scalar scale) {
-    double sx = scale, sy = scale;
-    bool notFullHD = (Options::ScreenResolutionWidth != 1920) || (Options::ScreenResolutionHeight != 1080);
-    if (notFullHD) {
-        sx *= Options::ScreenResolutionWidth / 1920.;
-        sy *= Options::ScreenResolutionHeight / 1080.;
-    }
-    return Size(sx * data.width, sy * data.height);
+    const double s = scale * Canvas::pixelScale();
+    return Size(s * data.width, s * data.height);
 }
 
 std::vector<unsigned char> slope::areaReduceRGBA(const unsigned char* src, int sw, int sh, int dw, int dh) {
@@ -311,11 +307,10 @@ using namespace slope;
 
 // half size of the screen space draw, in relative screen units
 void screenHalfSize(const ImageData& data, scalar draw_scale, scalar k, scalar& hw, scalar& hh) {
-    auto W = ImGui::GetWindowSize();
-    const scalar sx = Options::ScreenResolutionWidth / 1920.;
-    const scalar sy = Options::ScreenResolutionHeight / 1080.;
-    hw = (data.width * draw_scale * k * sx * 0.5) / std::max(1.f, W.x);
-    hh = (data.height * draw_scale * k * sy * 0.5) / std::max(1.f, W.y);
+    auto W = Canvas::size();
+    const scalar p = Canvas::pixelScale();
+    hw = (data.width * draw_scale * k * p * 0.5) / std::max(1.f, W.x);
+    hh = (data.height * draw_scale * k * p * 0.5) / std::max(1.f, W.y);
 }
 
 // one end of the placement. An unplaced plane becomes the billboard it is drawn as
@@ -361,9 +356,9 @@ void slope::DisplayImageOnPlane(const ImageData& data, const StateInSlide& sis, 
     Frame3D f;
     if (!resolvedFrame(sis, data, scale, f))
         return;
-    // the latex baseline arrives in pixels, a fraction of the drawn height
+    // the latex baseline arrives in screen pixels, a fraction of the drawn height
     if (std::abs(y_offset) > 1e-9 && scale > 0)
-        f.origin += (2 * y_offset / (data.height * scale)) * f.v;
+        f.origin += (2 * y_offset / (data.height * scale * Canvas::pixelScale())) * f.v;
     DrawTexturedPlane(f, data, tint, sis.getAlpha());
 }
 
@@ -384,16 +379,14 @@ void slope::DisplayImage(const ImageData& data, const StateInSlide& sis, scalar 
     auto P = sis.getAbsolutePosition();
     P.y += y_offset;
 
-    bool notfullHD = (Options::ScreenResolutionWidth != 1920) || (Options::ScreenResolutionHeight != 1080);
+    const double p = Canvas::pixelScale();
 
-    if (std::abs(sis.getAngle()) > 0.001 || std::abs(1 - scale) > 1e-2 || notfullHD) {
-        double sx = Options::ScreenResolutionWidth / 1920.;
-        double sy = Options::ScreenResolutionHeight / 1080.;
-        ImageRotated((intptr_t)data.texture, P, ImVec2(sx * data.width * scale, sy * data.height * scale), sis.getAngle(), color_multiplier);
+    if (std::abs(sis.getAngle()) > 0.001 || std::abs(1 - scale) > 1e-2 || p != 1) {
+        ImageRotated((intptr_t)data.texture, P, ImVec2(p * data.width * scale, p * data.height * scale), sis.getAngle(), color_multiplier);
     } else {
         P.x -= data.width * 0.5 * scale;
         P.y -= data.height * 0.5 * scale;
-        ImGui::SetCursorPos(P);
+        ImGui::SetCursorScreenPos(P);
         ImGui::ImageWithBg(data.texture, ImVec2(data.width * scale, data.height * scale), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), ImVec4(0, 0, 0, 0), color_multiplier);
     }
 }

@@ -150,13 +150,13 @@ public:
     ~Shader();
 
     // Builds a shader from source text. w and h set the resolution of the offscreen rendering.
-    // Leave them out, or give 0 or less, to use the resolution of the window.
+    // Leave them out, or give 0 or less, to use the size of the slide, which follows the window.
     static ShaderPtr Add(const std::string& fragment_source, int w = 0, int h = 0);
     // Builds a shader from a file, which is compiled again when it changes.
     static ShaderPtr FromFile(const path& file, int w = 0, int h = 0);
 
     // Sets the resolution of the offscreen rendering, which does not depend on the size on screen.
-    // iResolution gives this value. The default is the resolution of the window.
+    // iResolution gives this value. The default is the size of the slide.
     void setResolution(int w, int h);
 
     // uniforms
@@ -352,10 +352,10 @@ public:
     vec2 viewHalf() const { return resolveViewHalf(); }
     vec2 viewCenter() const { return view_center ? view_center() : vec2::Zero(); }
 
-    // Converts a point of the plane of the shader to a window position, relative in [0,1]^2 with y down,
+    // Converts a point of the plane of the shader to a slide position, relative in [0,1]^2 with y down,
     // which is the space of anchors, and back.
     // It uses the view and rectangle of the last draw, so a tracked label agrees with the pixels under it.
-    // Before the first draw, it uses the rectangle that the shader would occupy centered in the window.
+    // Before the first draw, it uses the rectangle that the shader would occupy centered in the slide.
     vec2 worldToScreen(const vec2& w) const;
     vec2 screenToWorld(const vec2& s) const;
 
@@ -599,7 +599,7 @@ private:
         int transition_parameter = -1, slide_progress = -1;
         int iSlideTime = -1; // float[KF_SLIDE_COUNT], for secondsSinceKeyframe
         int iView = -1, iViewInv = -1, iProj = -1, iProjInv = -1;
-        int iCamPos = -1, iCamFov = -1, iScreenRect = -1, iWindowSize = -1;
+        int iCamPos = -1, iCamFov = -1, iScreenRect = -1, iWindowSize = -1, iCanvasInWindow = -1;
         int iViewCenter = -1, iViewHalf = -1;
         int iSceneDepth = -1, iSceneDepthValid = -1, iSceneDepthSize = -1;
         int iMouse = -1, iMouseNorm = -1, iHovered = -1, iDate = -1;
@@ -616,9 +616,9 @@ private:
     void cacheUniformLocations();
 
     int res_x = int(Options::ScreenResolutionWidth), res_y = int(Options::ScreenResolutionHeight);
-    // false at the screen-size default, getSize() then shows it at that size
-    // 1:1, rather than through the 1920x1080-relative scaling an explicit
-    // resolution goes through
+    // false at the default, the slide's own size, kept up as the window changes
+    // and shown 1:1, rather than through the 1080-high relative scaling an
+    // explicit resolution goes through
     bool explicit_resolution = false;
     bool gl_ready = false; // resources created (needs a live context)
     bool compiled = false; // last compile succeeded
@@ -658,7 +658,7 @@ private:
     bool view_x_from_aspect = true;
     vec2 resolveViewHalf() const;
     // What was last uploaded to iViewCenter/iViewHalf, and the rect it was
-    // drawn into (window relative, y down). worldToScreen inverts these rather
+    // drawn into (slide relative, y down). worldToScreen inverts these rather
     // than re-reading the callables, so it cannot disagree with the image.
     mutable vec2 drawn_view_center = vec2::Zero();
     mutable vec2 drawn_view_half = vec2(1, 1);
@@ -667,6 +667,7 @@ private:
     bool bad_view_reported = false; // a degenerate view is said once, not per frame
 
     void ensureResources(); // lazy GL init, on first draw
+    void followCanvas();    // the default resolution is the slide's, whatever the window became
     void recompile();
     void renderToTexture(const TimeObject& t, const StateInSlide& sis);
     void reloadFromFile();

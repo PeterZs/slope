@@ -78,7 +78,7 @@ void Scatter::paint(const TimeObject& t, const StateInSlide& sis, float appeared
     refresh();
     if (points.empty()) return;
 
-    const ImVec2 W = ImGui::GetWindowSize();
+    const ImVec2 W = Canvas::size();
     if (W.x <= 0 || W.y <= 0) return;
 
     const StateInSlide on = b->frame(sis);
@@ -101,7 +101,7 @@ void Scatter::paint(const TimeObject& t, const StateInSlide& sis, float appeared
         if (p(0) < x(0) || p(0) > x(1) || p(1) < y(0) || p(1) > y(1) || p(0) > edge)
             continue;
         const vec2 s = b->worldToScreen(p);
-        dl->AddCircleFilled(ImVec2(float(s(0)) * W.x, float(s(1)) * W.y), r, col);
+        dl->AddCircleFilled(Canvas::toScreen(s), r, col);
     }
 }
 

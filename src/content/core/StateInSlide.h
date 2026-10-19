@@ -5,6 +5,7 @@
 #include "content/config/io.h"
 #include "content/config/Options.h"
 #include "content/screen_primitives/layout/Anchor.h"
+#include "content/screen_primitives/layout/Canvas.h"
 
 #include "content/polyscope_primitives/Transform.h"
 #include "content/polyscope_primitives/LiveTransform.h"
@@ -119,12 +120,8 @@ struct StateInSlide {
         return alpha;
     }
 
-    // Position in pixels inside the current ImGui window.
-    ImVec2 getAbsolutePosition() const {
-        vec2 P = getPosition();
-        auto W = ImGui::GetWindowSize();
-        return ImVec2(P(0) * W.x, P(1) * W.y);
-    }
+    // Position in screen pixels, where ImGui draws.
+    ImVec2 getAbsolutePosition() const { return Canvas::toScreen(getPosition()); }
 };
 
 using StatePtr = std::shared_ptr<StateInSlide>;

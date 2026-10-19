@@ -1,10 +1,11 @@
 #include "content/screen_primitives/shapes/Box.h"
+#include "content/screen_primitives/layout/Canvas.h"
 
 namespace slope {
 
 vec2 FixedBox::getSize() const {
     vec2 rslt = size;
-    auto W = ImGui::GetWindowSize();
+    auto W = Canvas::size();
     return vec2(rslt(0) * W.x, rslt(1) * W.y);
 }
 
@@ -13,13 +14,12 @@ void Box::drawBox(const vec2& pos, const vec2& size, Color c, float roundness, f
     color.Value.w *= alpha;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    auto W = ImGui::GetWindowSize();
     vec2 pmin = pos - size * 0.5;
     vec2 pmax = pos + size * 0.5;
 
     draw_list->AddRectFilled(
-        ImVec2(pmin(0) * W.x, pmin(1) * W.y),
-        ImVec2(pmax(0) * W.x, pmax(1) * W.y),
+        Canvas::toScreen(pmin),
+        Canvas::toScreen(pmax),
         color, roundness);
 }
 

@@ -6,6 +6,7 @@
 #include "content/authoring/color_tools.h"
 #include "content/config/io.h"
 #include "content/config/Options.h"
+#include "content/screen_primitives/layout/Canvas.h"
 #include "content/screen_primitives/text/LateXMacros.h"
 #include <future>
 #include "extern/json.hpp"
@@ -243,15 +244,11 @@ public:
         return 800. / slope::Options::PDFtoPNGDensity * 0.45;
     }
 
-    // Factors along x and y at which the png is drawn.
+    // Factors along x and y at which the png is drawn, always equal.
     // The texture is stored at this size, so the sampler never has to shrink glyphs.
     std::pair<double, double> drawScale() const {
-        double sx = scale * getNormalizationFactor(), sy = sx;
-        if (Options::ScreenResolutionWidth != 1920 || Options::ScreenResolutionHeight != 1080) {
-            sx *= Options::ScreenResolutionWidth / 1920.;
-            sy *= Options::ScreenResolutionHeight / 1080.;
-        }
-        return {sx, sy};
+        const double s = scale * getNormalizationFactor() * Canvas::pixelScale();
+        return {s, s};
     }
 
     // Reads the texture again from the png when the drawing size and the number of texels no longer match.
@@ -318,19 +315,13 @@ public:
     // so that e and e^{a^{b^{c}}} placed at the same label sit on the same line.
     virtual vec2 getDrawOffset() const override {
         FlushPending();
-        return vec2(0, baselineOffset() * scale * getNormalizationFactor());
+        return vec2(0, baselineOffset() * scale * getNormalizationFactor() * Canvas::pixelScale());
     }
 
     // Size in pixels.
     virtual vec2 getSize() const override {
         FlushPending();
-        bool notfullHD = (Options::ScreenResolutionWidth != 1920) || (Options::ScreenResolutionHeight != 1080);
-        if (notfullHD) {
-            double sx = Options::ScreenResolutionWidth / 1920.;
-            double sy = Options::ScreenResolutionHeight / 1080.;
-            return vec2(sx * data.width, sy * data.height) * scale * getNormalizationFactor();
-        }
-        return vec2(data.width, data.height) * scale * getNormalizationFactor();
+        return vec2(data.width, data.height) * (scale * getNormalizationFactor() * Canvas::pixelScale());
     }
 };
 

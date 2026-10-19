@@ -457,7 +457,7 @@ void Board::syncTicks() {
 void Board::drawTicks(const TimeObject& t, const StateInSlide& sis) {
     ImVec2 pmin, pmax;
     screenRect(sis, pmin, pmax);
-    const ImVec2 W = ImGui::GetWindowSize();
+    const ImVec2 W = Canvas::size();
     if (W.x <= 0 || W.y <= 0) return;
 
     const scalar sc = sis.getScale();
@@ -491,14 +491,14 @@ void Board::drawTicks(const TimeObject& t, const StateInSlide& sis) {
                                                     : vec2(0, tk.value));
         // hung off the edge, since the axis may be out of the range
         const ImVec2 c = tk.horizontal
-                             ? ImVec2(float(on(0)) * W.x, side == "top" ? pmin.y - pad - float(wh(1)) * 0.5f
+                             ? ImVec2(Canvas::toScreen(on).x, side == "top" ? pmin.y - pad - float(wh(1)) * 0.5f
                                                                         : pmax.y + pad + float(wh(1)) * 0.5f)
                              : ImVec2(side == "right" ? pmax.x + pad + float(wh(0)) * 0.5f
                                                       : pmin.x - pad - float(wh(0)) * 0.5f,
-                                      float(on(1)) * W.y);
+                                      Canvas::toScreen(on).y);
 
         if (tk.tex) {
-            tk.anchor->updatePos(vec2(c.x / W.x, c.y / W.y));
+            tk.anchor->updatePos(Canvas::fromScreen(c));
             StateInSlide s;
             s.anchor = tk.anchor;
             s.scale = sc;

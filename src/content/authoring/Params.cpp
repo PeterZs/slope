@@ -1,4 +1,5 @@
 #include "content/authoring/Params.h"
+#include "content/screen_primitives/layout/Canvas.h"
 #include "content/config/io.h"
 #include "content/config/ReloadErrors.h"
 #include "imgui.h"
@@ -541,14 +542,12 @@ static std::set<std::string> vec2_handles;
 static std::string dragged_handle;
 
 static ImVec2 handlePixel(const vec2& value) {
-    ImVec2 d = ImGui::GetIO().DisplaySize;
-    return ImVec2(float(value(0)) * d.x, float(1.0 - value(1)) * d.y);
+    return Canvas::toScreen(vec2(value(0), 1.0 - value(1)));
 }
 
 static vec2 handleValue(const ImVec2& p) {
-    ImVec2 d = ImGui::GetIO().DisplaySize;
-    return vec2(std::clamp(scalar(p.x / d.x), scalar(0), scalar(1)),
-                std::clamp(scalar(1.f - p.y / d.y), scalar(0), scalar(1)));
+    const vec2 c = Canvas::fromScreen(p);
+    return vec2(std::clamp(c(0), scalar(0), scalar(1)), std::clamp(scalar(1) - c(1), scalar(0), scalar(1)));
 }
 
 // the panel's toggle, the handle itself is drawn by DrawVisible
@@ -605,7 +604,7 @@ static bool dragVec2Handle(const std::string& name, vec2& value) {
 // where the manipulator sits on screen, so the mouse is yielded to it there
 // and nowhere else
 static bool cursorNearGizmo(const vec& world) {
-    glm::mat4 VP = polyscope::view::getCameraPerspectiveMatrix() * polyscope::view::getCameraViewMatrix();
+    glm::mat4 VP = Canvas::renderedProjection() * polyscope::view::getCameraViewMatrix();
     glm::vec4 clip = VP * glm::vec4(float(world(0)), float(world(1)), float(world(2)), 1.f);
     if (clip.w <= 0)
         return false;

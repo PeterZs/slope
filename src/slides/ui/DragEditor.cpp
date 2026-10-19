@@ -4,7 +4,7 @@
 #include <set>
 
 std::vector<slope::PrimitivePtr> slope::DragEditor::getPrimitivesUnderMouse(Slide& s, scalar x, scalar y) const {
-    auto S = ImGui::GetWindowSize();
+    auto S = Canvas::size();
     std::vector<PrimitivePtr> hits;
     auto sorted = s.getDepthSorted();                            // back-to-front draw order
     for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) { // front to back
@@ -165,7 +165,8 @@ void slope::DragEditor::drawSelectionBox(const PrimitivePtr& prim, const StateIn
     const float ca = std::cos(a), sa = std::sin(a);
     // a formula is drawn off its anchor, on its baseline, so outlining it from
     // the anchor alone leaves the box hanging under the ink
-    const float px = cx * S.x, py = cy * S.y + float(sp->getDrawOffset()(1) * sis.getScale());
+    const ImVec2 c = Canvas::toScreen(vec2(cx, cy));
+    const float px = c.x, py = c.y + float(sp->getDrawOffset()(1) * sis.getScale());
     ImVec2 corner[4];
     const float ox[4] = {-hw, hw, hw, -hw};
     const float oy[4] = {-hh, -hh, hh, hh};
@@ -186,9 +187,9 @@ void slope::DragEditor::handleMarquee(Slide& cs, WindowManager& wm) {
     ImGui::SetNextFrameWantCaptureMouse(true);
     ImGui::SetNextFrameWantCaptureKeyboard(false);
 
-    auto S = ImGui::GetWindowSize();
-    double x = double(io.MousePos.x) / S.x;
-    double y = double(io.MousePos.y) / S.y;
+    auto S = Canvas::size();
+    double x = Canvas::fromScreen(io.MousePos)(0);
+    double y = Canvas::fromScreen(io.MousePos)(1);
 
     // only a press that travels becomes a marquee, one released in place
     // stays a plain toggle-click
@@ -200,8 +201,8 @@ void slope::DragEditor::handleMarquee(Slide& cs, WindowManager& wm) {
         auto* dl = ImGui::GetWindowDrawList();
         constexpr ImU32 fill_col = IM_COL32(80, 180, 255, 40);
         constexpr ImU32 border_col = IM_COL32(80, 180, 255, 200);
-        ImVec2 p0{float(std::min(marquee_start_x, x)) * S.x, float(std::min(marquee_start_y, y)) * S.y};
-        ImVec2 p1{float(std::max(marquee_start_x, x)) * S.x, float(std::max(marquee_start_y, y)) * S.y};
+        ImVec2 p0 = Canvas::toScreen(vec2(std::min(marquee_start_x, x), std::min(marquee_start_y, y)));
+        ImVec2 p1 = Canvas::toScreen(vec2(std::max(marquee_start_x, x), std::max(marquee_start_y, y)));
         dl->AddRectFilled(p0, p1, fill_col);
         dl->AddRect(p0, p1, border_col);
     }
@@ -251,7 +252,7 @@ void slope::DragEditor::handleGroup(Slide& cs, bool ctrl, bool shift, WindowMana
     ImGui::SetNextFrameWantCaptureMouse(true);
     ImGui::SetNextFrameWantCaptureKeyboard(false);
 
-    auto S = ImGui::GetWindowSize();
+    auto S = Canvas::size();
 
     // outline the members so the selection is visible
     float pulse = float((std::cos(TimeFrom(time_at_pick) * 5) + 1) * 0.5);
@@ -263,8 +264,8 @@ void slope::DragEditor::handleGroup(Slide& cs, bool ctrl, bool shift, WindowMana
         drawSelectionBox(m.prim, it->second, S, float(p(0)), float(p(1)), pulse);
     }
 
-    double x = double(io.MousePos.x) / S.x;
-    double y = double(io.MousePos.y) / S.y;
+    double x = Canvas::fromScreen(io.MousePos)(0);
+    double y = Canvas::fromScreen(io.MousePos)(1);
 
     if (ctrl && shift) { // still selecting, clicks must not start a drag
         group_dragging = false;
@@ -324,9 +325,8 @@ void slope::DragEditor::handle(Slide& cs, WindowManager& wm) {
     }
 
     if (ctrl && shift && click && selected_primitive == nullptr) {
-        auto S = ImGui::GetWindowSize();
-        auto x = double(io.MousePos.x) / S.x;
-        auto y = double(io.MousePos.y) / S.y;
+        auto x = Canvas::fromScreen(io.MousePos)(0);
+        auto y = Canvas::fromScreen(io.MousePos)(1);
         auto hits = getPrimitivesUnderMouse(cs, x, y);
         // decided on release, travelling makes it a marquee and staying put a
         // toggle-click on whatever was under the cursor
@@ -343,9 +343,8 @@ void slope::DragEditor::handle(Slide& cs, WindowManager& wm) {
     }
 
     if (ctrl && !shift && click) {
-        auto S = ImGui::GetWindowSize();
-        auto x = double(io.MousePos.x) / S.x;
-        auto y = double(io.MousePos.y) / S.y;
+        auto x = Canvas::fromScreen(io.MousePos)(0);
+        auto y = Canvas::fromScreen(io.MousePos)(1);
         // ctrl+clicking again at the same spot cycles to the primitive below
         releasePrimitive(cs);
         auto prim = pickWithCycling(cs, x, y);
@@ -373,9 +372,9 @@ void slope::DragEditor::handle(Slide& cs, WindowManager& wm) {
     ImGui::SetNextFrameWantCaptureKeyboard(false);
     ImGui::SetNextFrameWantCaptureMouse(true);
 
-    auto S = ImGui::GetWindowSize();
-    auto x = double(io.MousePos.x) / S.x;
-    auto y = double(io.MousePos.y) / S.y;
+    auto S = Canvas::size();
+    auto x = Canvas::fromScreen(io.MousePos)(0);
+    auto y = Canvas::fromScreen(io.MousePos)(1);
     auto& pis = cs[selected_primitive];
     LabelAnchorPtr lab = std::dynamic_pointer_cast<LabelAnchor>(pis.anchor);
     if (lab == nullptr) { // nothing writable to drag
@@ -462,11 +461,11 @@ void slope::DragEditor::handle(Slide& cs, WindowManager& wm) {
 
     if (!horizontal && std::abs(snap_dx) < snap_thr) {
         cx += snap_dx;
-        dl->AddLine({guide_x * S.x, 0.f}, {guide_x * S.x, S.y}, guide_col, 1.0f);
+        dl->AddLine(Canvas::toScreen(vec2(guide_x, 0)), Canvas::toScreen(vec2(guide_x, 1)), guide_col, 1.0f);
     }
     if (!vertical && std::abs(snap_dy) < snap_thr) {
         cy += snap_dy;
-        dl->AddLine({0.f, guide_y * S.y}, {S.x, guide_y * S.y}, guide_col, 1.0f);
+        dl->AddLine(Canvas::toScreen(vec2(0, guide_y)), Canvas::toScreen(vec2(1, guide_y)), guide_col, 1.0f);
     }
 
     // the position is rewritten every frame even when the mouse is still, so

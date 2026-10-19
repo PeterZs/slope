@@ -64,7 +64,7 @@ void Legend::paint(const TimeObject& t, const StateInSlide& sis, float appeared)
     auto b = owner();
     if (!b) return;
 
-    const ImVec2 W = ImGui::GetWindowSize();
+    const ImVec2 W = Canvas::size();
     if (W.x <= 0 || W.y <= 0) return;
 
     // only what this slide is showing, in declaration order
@@ -100,8 +100,9 @@ void Legend::paint(const TimeObject& t, const StateInSlide& sis, float appeared)
     const vec2 x = b->xview(), y = b->yview();
     const vec2 lo = b->worldToScreen(vec2(x(0), y(0)));
     const vec2 hi = b->worldToScreen(vec2(x(1), y(1)));
-    const float x0 = float(std::min(lo(0), hi(0))) * W.x, x1 = float(std::max(lo(0), hi(0))) * W.x;
-    const float y0 = float(std::min(lo(1), hi(1))) * W.y, y1 = float(std::max(lo(1), hi(1))) * W.y;
+    const ImVec2 o = Canvas::origin();
+    const float x0 = o.x + float(std::min(lo(0), hi(0))) * W.x, x1 = o.x + float(std::max(lo(0), hi(0))) * W.x;
+    const float y0 = o.y + float(std::min(lo(1), hi(1))) * W.y, y1 = o.y + float(std::max(lo(1), hi(1))) * W.y;
 
     // not "at", which is the deck's placement key
     const std::string at = settings.choice("corner", kCorners, "top_right");
@@ -137,7 +138,7 @@ void Legend::paint(const TimeObject& t, const StateInSlide& sis, float appeared)
 
         if (!anchors[i]) anchors[i] = AbsoluteAnchor::Add(vec2(-1, -1));
         const ImVec2 c(bmin.x + pad + swat + pad + float(sizes[i](0)) * 0.5f, mid);
-        anchors[i]->updatePos(vec2(c.x / W.x, c.y / W.y));
+        anchors[i]->updatePos(Canvas::fromScreen(c));
         texs[i]->setColor(Color(text_ink.Value.x, text_ink.Value.y, text_ink.Value.z));
         StateInSlide s;
         s.anchor = anchors[i];

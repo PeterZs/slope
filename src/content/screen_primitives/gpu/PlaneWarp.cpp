@@ -1,5 +1,6 @@
 #include "content/screen_primitives/gpu/PlaneWarp.h"
 #include "content/screen_primitives/media/Image.h"
+#include "content/screen_primitives/layout/Canvas.h"
 #include <polyscope/polyscope.h>
 #include <map>
 
@@ -49,7 +50,7 @@ Transform FoldInPlane(const Transform& T, scalar k, scalar angle) {
 
 CameraProjector CameraProjector::Current() {
     CameraProjector c;
-    glm::mat4 M = polyscope::view::getCameraPerspectiveMatrix() * polyscope::view::viewMat;
+    glm::mat4 M = Canvas::canvasProjection() * polyscope::view::viewMat;
     for (int col = 0; col < 4; col++)
         for (int row = 0; row < 4; row++)
             c.M[col * 4 + row] = M[col][row];
@@ -148,7 +149,7 @@ bool PlaneScreenExtent(const Frame3D& f, scalar& px_w, scalar& px_h) {
     if (!projectCorners(f, cam, c))
         return false;
 
-    auto W = ImGui::GetWindowSize();
+    auto W = Canvas::size();
     auto px = [&](int a, int b) {
         return std::hypot((c[a](0) - c[b](0)) * W.x, (c[a](1) - c[b](1)) * W.y);
     };
@@ -166,8 +167,7 @@ void DrawTexturedPlane(const Frame3D& f, const ImageData& data, const RGBA& tint
     if (!f.double_sided && n.dot(cam.eye - f.origin) <= 0)
         return;
 
-    auto W = ImGui::GetWindowSize();
-    auto toPixels = [&](const vec2& s) { return ImVec2((float)(s(0) * W.x), (float)(s(1) * W.y)); };
+    auto toPixels = [](const vec2& s) { return Canvas::toScreen(s); };
 
     vec2 c[4];
     if (!projectCorners(f, cam, c))

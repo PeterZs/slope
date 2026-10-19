@@ -28,7 +28,7 @@ void slope::HUD::drawSlideNumber(size_t current_slide) const {
 
 void slope::HUD::drawGizmoMode(const std::string& what) const {
     auto* dl = ImGui::GetWindowDrawList();
-    auto S = ImGui::GetWindowSize();
+    auto S = Canvas::size();
 
     auto& bg = polyscope::view::bgColor;
     auto inv = [](float f) { return (int)((1.0f - f) * 255 + 0.5f); };
@@ -36,14 +36,14 @@ void slope::HUD::drawGizmoMode(const std::string& what) const {
 
     std::string label = "gizmo mode : " + what;
     float size = ImGui::GetFontSize() * 1.5f;
-    dl->AddText(ImGui::GetFont(), size, ImVec2(S.x * 0.02f, S.y * 0.02f), col, label.c_str());
+    dl->AddText(ImGui::GetFont(), size, Canvas::toScreen(vec2(0.02, 0.02)), col, label.c_str());
 }
 
 void slope::HUD::drawPauseIndicator(float elapsed, float duration) const {
     float remaining = 1.0f - elapsed / duration;
 
     auto* dl = ImGui::GetWindowDrawList();
-    auto S = ImGui::GetWindowSize();
+    auto S = Canvas::size();
 
     constexpr float padding = 0.02f;
     constexpr float norm_y = 1.0f - 0.07f;
@@ -51,7 +51,8 @@ void slope::HUD::drawPauseIndicator(float elapsed, float duration) const {
     constexpr int segments = 48;
 
     float radius = S.y * 0.012f;
-    ImVec2 center(S.x * (1.0f - padding) - radius, S.y * norm_y);
+    const ImVec2 O = Canvas::origin();
+    ImVec2 center(O.x + S.x * (1.0f - padding) - radius, O.y + S.y * norm_y);
 
     auto& bg = polyscope::view::bgColor;
     auto inv = [](float f) { return (int)((1.0f - f) * 255 + 0.5f); };

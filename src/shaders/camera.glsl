@@ -60,11 +60,11 @@ void orbitRay(out vec3 ro, out vec3 rd) {
 //   }
 //
 // The shader draws into its own offscreen target and is blitted into a
-// rectangle, so the fragment is first mapped back to the window pixel it will
+// rectangle, so the fragment is first mapped back to the slide pixel it will
 // end up on (iScreenRect), then unprojected with polyscope's matrices.
 
 // the screen, shared with slope
-// What polyscopeRay is to the 3D scene, screenPoint is to the window, the
+// What polyscopeRay is to the 3D scene, screenPoint is to the slide, the
 // referential a shader shares with everything outside it, whatever rectangle
 // it is drawn into. slope's 2D parameters live in exactly this space, so a
 // handle dragged in the panel is at screenPoint() == the parameter's value.
@@ -72,11 +72,11 @@ void orbitRay(out vec3 ro, out vec3 rd) {
 // a pixel of this shader (as gl_FragCoord or iMouse.xy) in screen coordinates
 vec2 screenPoint(vec2 pixel) {
     vec2 f  = pixel / iResolution;                           // 0..1 in the target, y up
-    vec2 px = iScreenRect.xy + vec2(f.x, 1.0 - f.y) * iScreenRect.zw;  // window px, y down
+    vec2 px = iScreenRect.xy + vec2(f.x, 1.0 - f.y) * iScreenRect.zw;  // slide px, y down
     return vec2(px.x / iWindowSize.x, 1.0 - px.y / iWindowSize.y);
 }
 
-// this fragment in screen coordinates. 0..1 across the window, y up
+// this fragment in screen coordinates. 0..1 across the slide, y up
 vec2 screenPoint() { return screenPoint(gl_FragCoord.xy); }
 
 // the way back, a screen coordinate as this shader's own uv (0..1, y up),
@@ -87,7 +87,7 @@ vec2 screenToLocal(vec2 s) {
     return vec2(q.x, 1.0 - q.y);
 }
 
-// the window's aspect, to keep a picture square on screen rather than in the
+// the slide's aspect, to keep a picture square on screen rather than in the
 // rectangle, iAspect is the rectangle's own
 float screenAspect() { return iWindowSize.x / iWindowSize.y; }
 
@@ -133,8 +133,8 @@ float polyscopeDepth(vec3 world_pos) {
 float sceneDepthHere() {
     if (iSceneDepthValid < 0.5) return 1.0;
     vec2 f  = gl_FragCoord.xy / iResolution;
-    vec2 px = iScreenRect.xy + vec2(f.x, 1.0 - f.y) * iScreenRect.zw;   // window px, y down
-    vec2 uv = vec2(px.x / iWindowSize.x, 1.0 - px.y / iWindowSize.y);   // texture uv, y up
+    vec2 px = iCanvasInWindow.xy + iScreenRect.xy + vec2(f.x, 1.0 - f.y) * iScreenRect.zw; // window px, y down
+    vec2 uv = vec2(px.x / iCanvasInWindow.z, 1.0 - px.y / iCanvasInWindow.w);   // texture uv, y up
     // outside the window the sampler would clamp and report whatever is on the
     // edge. It says "empty" instead.
     if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))))

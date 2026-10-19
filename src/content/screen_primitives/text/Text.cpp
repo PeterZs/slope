@@ -28,10 +28,8 @@ void Text::display(const StateInSlide& sis) const {
     const auto& bg = polyscope::view::bgColor;
     style->Colors[ImGuiCol_Text] =
         RGBA(ImVec4(1.f - bg[0], 1.f - bg[1], 1.f - bg[2], sis.getAlpha()));
-    auto S = ImGui::GetWindowSize();
-
     auto P = sis.getAbsolutePosition();
-    ImGui::SetCursorPos(ImVec2(P.x - size.x * 0.5, P.y - size.y * 0.5));
+    ImGui::SetCursorScreenPos(ImVec2(P.x - size.x * 0.5, P.y - size.y * 0.5));
     ImGui::Text(content.c_str());
 
     style->Colors[ImGuiCol_Text] = old;

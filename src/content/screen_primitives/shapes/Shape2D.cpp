@@ -1,5 +1,6 @@
 #include "content/screen_primitives/shapes/Shape2D.h"
 #include "content/screen_primitives/layout/Anchor.h"
+#include "content/screen_primitives/layout/Canvas.h"
 #include "polyscope/view.h"
 
 namespace slope {
@@ -15,7 +16,7 @@ static ImU32 withAlpha(const Color& c, float alpha) {
 }
 
 static float pixelThickness(float thickness) {
-    return thickness * ImGui::GetWindowSize().y / 1080.f;
+    return thickness * float(Canvas::pixelScale());
 }
 
 // draws the arc-length prefix [0,t] of a pixel-space polyline and returns
@@ -117,13 +118,12 @@ Shape2DPtr Shape2D::Rect(const vec2& center, const vec2& size) {
 }
 
 std::vector<ImVec2> Shape2D::toPixels(const StateInSlide& sis) const {
-    auto W = ImGui::GetWindowSize();
     vec2 pos = sis.getPosition();
     scalar s = sis.getScale();
     std::vector<ImVec2> px;
     px.reserve(points.size() + 1);
     for (const auto& p : points)
-        px.push_back(ImVec2((pos(0) + s * p(0)) * W.x, (pos(1) + s * p(1)) * W.y));
+        px.push_back(Canvas::toScreen(pos + s * p));
     if (closed && !px.empty())
         px.push_back(px.front());
     return px;
@@ -206,11 +206,10 @@ void Box2D::drawBox(parameter t, float alpha) {
     if (!bounds(lo, hi))
         return;
     updateAnchor((lo + hi) * 0.5); // so arrows can attach to the box
-    auto W = ImGui::GetWindowSize();
     std::vector<ImVec2> px = {
-        ImVec2(lo(0) * W.x, lo(1) * W.y), ImVec2(hi(0) * W.x, lo(1) * W.y),
-        ImVec2(hi(0) * W.x, hi(1) * W.y), ImVec2(lo(0) * W.x, hi(1) * W.y),
-        ImVec2(lo(0) * W.x, lo(1) * W.y)};
+        Canvas::toScreen(lo), Canvas::toScreen(vec2(hi(0), lo(1))),
+        Canvas::toScreen(hi), Canvas::toScreen(vec2(lo(0), hi(1))),
+        Canvas::toScreen(lo)};
     if (style.filled) {
         float fill_alpha = alpha * std::min<float>(1.f, t); // fades in with the intro
         ImU32 fill = use_background_fill
@@ -326,13 +325,13 @@ void Arrow2D::drawArrow(parameter t, float alpha) const {
         return;
     vec2 control = controlPoint(a, b);
 
-    auto W = ImGui::GetWindowSize();
+    auto W = Canvas::size();
     constexpr int N = 48;
     std::vector<ImVec2> px(N);
     for (int i = 0; i < N; i++) {
         scalar u = scalar(i) / (N - 1);
         vec2 p = (1 - u) * (1 - u) * a + 2 * (1 - u) * u * control + u * u * b;
-        px[i] = ImVec2(p(0) * W.x, p(1) * W.y);
+        px[i] = Canvas::toScreen(p);
     }
 
     ImU32 col = withAlpha(style.color, alpha);

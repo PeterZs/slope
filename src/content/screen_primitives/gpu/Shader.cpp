@@ -321,7 +321,7 @@ uniform int   absolute_frame_number;  // current slide index in the deck
 uniform int   relative_frame_number;  // slides elapsed since this shader appeared
 uniform float transition_parameter;   // 0 -> 1 across the current intro / outro
 uniform float slide_progress;         // 0 -> 1 across the whole slide change
-// polyscope's camera. iScreenRect is this shader's rect in the window (x, y,
+// polyscope's camera. iScreenRect is this shader's rect in the slide (x, y,
 // w, h, ImGui display units, y down), letting a fragment map back to a pixel.
 uniform mat4  iView;         // world -> camera
 uniform mat4  iViewInv;      // camera -> world
@@ -329,8 +329,9 @@ uniform mat4  iProj;         // camera -> clip
 uniform mat4  iProjInv;      // clip -> camera
 uniform vec3  iCamPos;       // camera position, world space
 uniform float iCamFov;       // vertical field of view, degrees
-uniform vec4  iScreenRect;   // this shader's rectangle in the window
-uniform vec2  iWindowSize;   // the window, same units as iScreenRect
+uniform vec4  iScreenRect;   // this shader's rectangle in the slide
+uniform vec2  iWindowSize;   // the slide, same units as iScreenRect
+uniform vec4  iCanvasInWindow; // the slide's origin in the real window (xy) and the window's size (zw)
 uniform sampler2D iSceneDepth;    // polyscope's depth buffer for the 3D scene
 uniform float iSceneDepthValid;   // 1.0 when iSceneDepth holds a rendered scene
 uniform vec2  iSceneDepthSize;    // its resolution, in framebuffer pixels
@@ -1719,6 +1720,7 @@ void Shader::cacheUniformLocations() {
     uloc.iCamFov = L("iCamFov");
     uloc.iScreenRect = L("iScreenRect");
     uloc.iWindowSize = L("iWindowSize");
+    uloc.iCanvasInWindow = L("iCanvasInWindow");
     uloc.iViewCenter = L("iViewCenter");
     uloc.iViewHalf = L("iViewHalf");
 
@@ -1767,8 +1769,20 @@ void Shader::refreshSnippetTextures() {
     }
 }
 
+void Shader::followCanvas() {
+    if (explicit_resolution)
+        return;
+    const int w = std::max(1, int(Canvas::size().x)), h = std::max(1, int(Canvas::size().y));
+    if (w == res_x && h == res_y)
+        return;
+    res_x = w;
+    res_y = h;
+    gl_ready = false; // recreated at the new size
+}
+
 void Shader::renderToTexture(const TimeObject& t, const StateInSlide& sis) {
     refreshSnippetTextures();
+    followCanvas();
     ensureResources();
     if (needs_recompile)
         recompile();
@@ -1895,7 +1909,8 @@ void Shader::renderToTexture(const TimeObject& t, const StateInSlide& sis) {
     // here rather than per fragment.
     {
         const glm::mat4 V = polyscope::view::getCameraViewMatrix();
-        const glm::mat4 Pr = polyscope::view::getCameraPerspectiveMatrix();
+        // the slide is the shader's window, as the 2D parameters see it
+        const glm::mat4 Pr = Canvas::canvasProjection();
         auto mat = [&](int l, const glm::mat4& M) {
             if (l >= 0)
                 g.UniformMatrix4fv(l, 1, 0 /*no transpose : glm is column-major*/,
@@ -1911,13 +1926,14 @@ void Shader::renderToTexture(const TimeObject& t, const StateInSlide& sis) {
             g.Uniform3f(l, c.x, c.y, c.z);
         }
         if (int l = U.iCamFov; l >= 0)
-            g.Uniform1f(l, float(polyscope::view::fov));
+            g.Uniform1f(l, Canvas::canvasFov());
+        const ImVec2 co = Canvas::origin(), cs = Canvas::size();
         if (int l = U.iScreenRect; l >= 0)
-            g.Uniform4f(l, pmin.x, pmin.y, w, h);
-        if (int l = U.iWindowSize; l >= 0) {
-            const ImVec2 ds = ImGui::GetIO().DisplaySize;
-            g.Uniform2f(l, ds.x, ds.y);
-        }
+            g.Uniform4f(l, pmin.x - co.x, pmin.y - co.y, w, h);
+        if (int l = U.iWindowSize; l >= 0)
+            g.Uniform2f(l, cs.x, cs.y);
+        if (int l = U.iCanvasInWindow; l >= 0)
+            g.Uniform4f(l, co.x, co.y, Canvas::windowSize().x, Canvas::windowSize().y);
 
         // polyscope's depth buffer, so a shader can be occluded by the 3D
         // scene instead of always drawing over it. Re-asserted every frame,
@@ -2117,10 +2133,10 @@ void Shader::screenRect(const StateInSlide& sis, ImVec2& pmin, ImVec2& pmax) con
 
     // recorded here rather than at the blit, since this is the one place the
     // rect is defined, so what tracking inverts is what is drawn
-    const auto W = ImGui::GetWindowSize();
+    const ImVec2 W = Canvas::size();
     if (W.x > 0 && W.y > 0) {
-        drawn_rect_min = vec2(pmin.x / W.x, pmin.y / W.y);
-        drawn_rect_max = vec2(pmax.x / W.x, pmax.y / W.y);
+        drawn_rect_min = Canvas::fromScreen(pmin);
+        drawn_rect_max = Canvas::fromScreen(pmax);
         rect_recorded = true;
     }
 }
@@ -2229,18 +2245,11 @@ void Shader::display(const StateInSlide& sis, float global_alpha) {
 }
 
 vec2 Shader::getSize() const {
-    // at the screen-size default res_x/res_y are the window, so show it 1:1
+    // the default covers the slide, also before the first frame has sized it
     if (!explicit_resolution)
-        return vec2(res_x, res_y);
+        return vec2(Canvas::aspect, 1) * (1080 * Canvas::pixelScale());
 
-    double sx = 1, sy = 1;
-    bool notFullHD = (Options::ScreenResolutionWidth != 1920) ||
-                     (Options::ScreenResolutionHeight != 1080);
-    if (notFullHD) {
-        sx = Options::ScreenResolutionWidth / 1920.;
-        sy = Options::ScreenResolutionHeight / 1080.;
-    }
-    return vec2(sx * res_x, sy * res_y);
+    return vec2(res_x, res_y) * Canvas::pixelScale();
 }
 
 // Deferred so a shader can see this frame's scene depth. ImGui only records

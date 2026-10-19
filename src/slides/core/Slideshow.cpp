@@ -8,6 +8,7 @@
 #include "polyscope/pick.h"
 #include "content/authoring/color_tools.h"
 #include "content/authoring/Params.h"
+#include "content/screen_primitives/layout/Canvas.h"
 #include "content/authoring/Snippet.h"
 #include "ImGuizmo.h"
 #include <spdlog/spdlog.h>
@@ -155,6 +156,8 @@ void slope::Slideshow::play() {
 
     // polyscope aims the gizmos at a window drawn first, hence under everything
     ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
+
+    Canvas::BeginRenderFov();
 }
 
 void slope::Slideshow::updateBackground(parameter transition) {
@@ -303,10 +306,10 @@ void slope::Slideshow::copyLabelSuggestion(bool as_placement) {
 }
 
 void slope::Slideshow::ImGuiWindowConfig() {
-    ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
+    Canvas::Update();
+    Canvas::DrawBars();
+    ImGui::SetNextWindowPos(Canvas::origin());
+    ImGui::SetNextWindowSize(Canvas::size());
     ImGui::SetNextFrameWantCaptureMouse(false);
     ImGui::SetNextFrameWantCaptureKeyboard(true);
 }
@@ -483,6 +486,7 @@ void slope::Slideshow::exportPDF() {
         if (display_slide_number)
             hud.drawSlideNumber(state.current);
         ImGui::End();
+        Canvas::BeginRenderFov();
     };
 
     polyscope::ScreenshotOptions opts;
@@ -573,6 +577,7 @@ void slope::Slideshow::exportTransitions() {
         if (display_slide_number)
             hud.drawSlideNumber(state.current);
         ImGui::End();
+        Canvas::BeginRenderFov();
     };
 
     polyscope::ScreenshotOptions opts;
@@ -680,6 +685,7 @@ void slope::Slideshow::recordVideo() {
         if (display_slide_number)
             hud.drawSlideNumber(state.current);
         ImGui::End();
+        Canvas::BeginRenderFov();
     };
 
     polyscope::ScreenshotOptions opts;

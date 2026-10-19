@@ -746,10 +746,7 @@ void Video::handleClick(const StateInSlide& sis) {
         return;
     }
 
-    ImVec2 m = io.MousePos;
-    const ImVec2 w = ImGui::GetWindowPos();
-    m.x -= w.x;
-    m.y -= w.y;
+    const ImVec2 m = io.MousePos;
     const bool over = m.x >= pmin.x && m.x <= pmax.x && m.y >= pmin.y && m.y <= pmax.y;
 
     if (ImGui::IsMouseClicked(0)) press_inside_ = over;
